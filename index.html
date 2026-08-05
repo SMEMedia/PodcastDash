@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Advanced Manufacturing Now Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Libsyn export</p>
+          <h1>Advanced Manufacturing Now</h1>
+        </div>
+        <div class="controls">
+          <label class="select-label">
+            Range
+            <select id="rangeSelect">
+              <option value="90">Last 90 days</option>
+              <option value="180">Last 180 days</option>
+              <option value="365" selected>Last 12 months</option>
+              <option value="all">All time</option>
+            </select>
+          </label>
+          <label class="select-label">
+            Metric
+            <select id="metricSelect">
+              <option value="iab" selected>IAB Downloads</option>
+              <option value="unique">Unique Downloads</option>
+            </select>
+          </label>
+        </div>
+      </header>
+
+      <section class="kpis" aria-label="Summary metrics">
+        <article>
+          <span>Total IAB</span>
+          <strong id="totalIab">--</strong>
+          <em id="totalIabNote">--</em>
+        </article>
+        <article>
+          <span>Total Unique</span>
+          <strong id="totalUnique">--</strong>
+          <em id="totalUniqueNote">--</em>
+        </article>
+        <article>
+          <span>Selected Range</span>
+          <strong id="rangeTotal">--</strong>
+          <em id="rangeNote">--</em>
+        </article>
+        <article>
+          <span>Episodes</span>
+          <strong id="episodeCount">--</strong>
+          <em id="episodeNote">--</em>
+        </article>
+      </section>
+
+      <section class="grid main-grid">
+        <article class="panel wide">
+          <div class="panel-head">
+            <div>
+              <h2>Download Trend</h2>
+              <p id="trendSubtitle">Daily downloads</p>
+            </div>
+            <div class="legend">
+              <span><i class="iab"></i>IAB</span>
+              <span><i class="unique"></i>Unique</span>
+            </div>
+          </div>
+          <div id="dailyChart" class="chart tall"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Monthly Momentum</h2>
+              <p>Most recent 18 months</p>
+            </div>
+          </div>
+          <div id="monthlyChart" class="chart"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Best Weeks</h2>
+              <p>Peak weekly totals</p>
+            </div>
+          </div>
+          <div id="weeklyBars" class="bar-list"></div>
+        </article>
+      </section>
+
+      <section class="grid lower-grid">
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Top Episodes</h2>
+              <p>Sorted by selected metric</p>
+            </div>
+          </div>
+          <div id="episodeBars" class="episode-list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Episode Table</h2>
+              <p id="tableNote">Search titles or years</p>
+            </div>
+            <input id="episodeSearch" type="search" placeholder="Search episodes" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Release</th>
+                  <th>IAB</th>
+                  <th>Unique</th>
+                </tr>
+              </thead>
+              <tbody id="episodeTable"></tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
