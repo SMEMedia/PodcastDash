@@ -132,6 +132,15 @@ def selected_range(daily: pd.DataFrame, range_label: str) -> pd.DataFrame:
     return daily[daily["date"] >= min_date]
 
 
+def date_window(daily: pd.DataFrame, range_label: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    ranged = selected_range(daily, range_label)
+    return ranged["date"].min(), ranged["date"].max()
+
+
+def filter_dates(data: pd.DataFrame, column: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+    return data[(data[column] >= start) & (data[column] <= end)].copy()
+
+
 def trend_chart(data: pd.DataFrame) -> alt.Chart:
     chart_data = data.melt(
         id_vars="date",
@@ -177,7 +186,7 @@ def trend_chart(data: pd.DataFrame) -> alt.Chart:
 
 
 def monthly_chart(data: pd.DataFrame, metric_key: str, metric_name: str) -> alt.Chart:
-    chart_data = data.tail(18).copy()
+    chart_data = data.copy()
     return (
         alt.Chart(chart_data)
         .mark_bar(cornerRadiusTopLeft=3, cornerRadiusTopRight=3)
@@ -226,9 +235,18 @@ with control_b:
 
 metric = "iab" if metric_label == "IAB Downloads" else "unique"
 range_df = selected_range(daily_df, range_label)
+range_start, range_end = date_window(daily_df, range_label)
+weekly_range_df = filter_dates(weekly_df, "date", range_start, range_end)
+monthly_range_df = filter_dates(
+    monthly_df,
+    "date",
+    pd.Timestamp(range_start.year, range_start.month, 1),
+    pd.Timestamp(range_end.year, range_end.month, 1),
+)
+episodes_range_df = filter_dates(episodes_df, "release", range_start, range_end + timedelta(days=1))
 latest_date = daily_df["date"].max()
 first_date = daily_df["date"].min()
-latest_release = episodes_df["release"].max()
+latest_release = episodes_range_df["release"].max() if not episodes_range_df.empty else pd.NaT
 range_total = int(range_df[metric].sum())
 range_average = int(round(range_df[metric].mean())) if not range_df.empty else 0
 
@@ -241,7 +259,11 @@ kpi_1, kpi_2, kpi_3, kpi_4 = st.columns(4)
 kpi_1.metric("Total IAB", format_num(totals["iab"]))
 kpi_2.metric("Total Unique", format_num(totals["unique"]))
 kpi_3.metric(f"{range_label} {metric_label}", format_num(range_total), f"{format_num(range_average)} per day")
-kpi_4.metric("Episodes", format_num(len(episodes_df)), f"Latest: {format_date(latest_release)}")
+kpi_4.metric(
+    "Episodes",
+    format_num(len(episodes_range_df)),
+    f"Latest in range: {format_date(latest_release)}" if pd.notna(latest_release) else "No releases in range",
+)
 
 st.divider()
 
@@ -256,12 +278,18 @@ with trend_col:
 
 with side_col:
     st.subheader("Monthly Momentum")
-    st.markdown("<p class='section-note'>Most recent 18 months</p>", unsafe_allow_html=True)
-    st.altair_chart(monthly_chart(monthly_df, metric, metric_label), use_container_width=True)
+    st.markdown(
+        f"<p class='section-note'>Monthly totals for {range_label.lower()}</p>",
+        unsafe_allow_html=True,
+    )
+    st.altair_chart(monthly_chart(monthly_range_df, metric, metric_label), use_container_width=True)
 
     st.subheader("Best Weeks")
-    st.markdown("<p class='section-note'>Peak weekly totals</p>", unsafe_allow_html=True)
-    top_weeks = weekly_df.nlargest(10, metric).copy()
+    st.markdown(
+        f"<p class='section-note'>Peak weekly totals for {range_label.lower()}</p>",
+        unsafe_allow_html=True,
+    )
+    top_weeks = weekly_range_df.nlargest(10, metric).copy()
     top_weeks["week"] = top_weeks["date"].dt.strftime("%Y-%m-%d")
     st.dataframe(
         top_weeks[["week", metric]].rename(columns={"week": "Week", metric: metric_label}),
@@ -275,8 +303,11 @@ st.divider()
 top_col, table_col = st.columns([1, 1.35])
 with top_col:
     st.subheader("Top Episodes")
-    st.markdown("<p class='section-note'>Sorted by selected metric</p>", unsafe_allow_html=True)
-    top_episodes = episodes_df.nlargest(12, metric).copy()
+    st.markdown(
+        f"<p class='section-note'>Sorted by selected metric for {range_label.lower()}</p>",
+        unsafe_allow_html=True,
+    )
+    top_episodes = episodes_range_df.nlargest(12, metric).copy()
     top_episodes["Release"] = top_episodes["release"].dt.strftime("%b %d, %Y")
     st.dataframe(
         top_episodes[["title", "Release", metric]].rename(
@@ -290,10 +321,13 @@ with top_col:
 with table_col:
     st.subheader("Episode Table")
     query = st.text_input("Search episodes", placeholder="Search titles or years")
-    filtered = episodes_df
+    filtered = episodes_range_df
     if query:
-        haystack = episodes_df["title"].str.cat(episodes_df["release"].dt.strftime("%Y-%m-%d"), sep=" ")
-        filtered = episodes_df[haystack.str.contains(query, case=False, regex=False, na=False)]
+        haystack = episodes_range_df["title"].str.cat(
+            episodes_range_df["release"].dt.strftime("%Y-%m-%d"),
+            sep=" ",
+        )
+        filtered = episodes_range_df[haystack.str.contains(query, case=False, regex=False, na=False)]
 
     table = filtered.copy()
     table["Release"] = table["release"].dt.strftime("%b %d, %Y")
