@@ -54,4 +54,3 @@ The dashboard reports the information available in its current Libsyn export. It
 - Keep Streamlit and repository access assigned to current SME staff.
 - Escalate source-file, deployment, or code changes to the assigned technical owner.
 
-*** Delete File: SurveySlideGen/README.md
