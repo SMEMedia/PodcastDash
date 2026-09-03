@@ -1,21 +1,43 @@
 # Advanced Manufacturing Now Podcast Dashboard
 
-This dashboard summarizes performance for the **Advanced Manufacturing Now** podcast using the saved Libsyn export. It is intended for routine use in a web browser.
+This dashboard summarizes performance for the **Advanced Manufacturing Now** podcast using Libsyn export files. It is intended for routine use in a web browser.
 
-## Important links
+## Important Links
 
 - [Open the dashboard](https://smepodcastdash.streamlit.app/)
 - [SMEMedia repository](https://github.com/SMEMedia/PodcastDash)
 
-## Use the dashboard
+## What The Dashboard Shows
+
+- Total podcast downloads
+- Daily download trends
+- Monthly performance
+- Highest-performing weeks
+- Top episodes
+- A searchable episode table
+
+## Updating The Data
+
+The dashboard can use the saved Libsyn files already included with the app, or you can drag in updated CSV files.
+
+To use updated data:
 
 1. Open the dashboard.
-2. Review the summary download totals and daily trend.
-3. Use the monthly-momentum and best-weeks sections to identify changes over time.
-4. Review top episodes.
-5. Use the searchable episode table to find a specific episode.
+2. Open **Update the dashboard data**.
+3. Drag in the overall Libsyn stats CSV.
+4. Drag in the Libsyn **By Episode** CSV.
+5. Review the updated charts and tables.
 
-The dashboard reports the information available in its current Libsyn export. It does not change information in Libsyn.
+The uploaded files are used for that dashboard session. They do not change information in Libsyn.
+
+## Using The Filters
+
+The **Range** filter changes the time period shown across the dashboard, including the trend chart, monthly totals, best weeks, top episodes, and episode table.
+
+The **Metric** filter switches between:
+
+- **IAB Downloads**, the standard podcast download measurement
+- **Unique Downloads**, a more listener-focused download count
 
 ## Troubleshooting
 
@@ -38,6 +60,7 @@ The dashboard reports the information available in its current Libsyn export. It
 - Try a wider date range.
 - Clear any search text or filters.
 - Refresh the browser once.
+- Confirm both expected CSV files were uploaded, if using updated data.
 - If the entire dashboard is empty, ask the dashboard owner to confirm that the current Libsyn export is available to the app.
 
 ### The dashboard will not open
@@ -47,10 +70,10 @@ The dashboard reports the information available in its current Libsyn export. It
 - Check [Streamlit Community Cloud](https://share.streamlit.io/) for an app status message.
 - Send a screenshot and the approximate time of the error to the dashboard support contact.
 
-## Ongoing maintenance
+## Ongoing Maintenance
 
-- Replace the dashboard’s Libsyn source export whenever a new reporting period is required.
-- Record the export date so users know how current the results are.
+- Export updated Libsyn CSV files when a new reporting period is required.
+- Use the dashboard upload area for quick review of new exports.
+- Replace the saved source files in the repository only when the default dashboard data should change for everyone.
 - Keep Streamlit and repository access assigned to current SME staff.
 - Escalate source-file, deployment, or code changes to the assigned technical owner.
-

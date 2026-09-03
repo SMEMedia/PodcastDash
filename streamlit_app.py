@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import csv
+import io
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import altair as alt
 import pandas as pd
@@ -41,14 +43,13 @@ def _number(value: str | int | float | None) -> int:
     return int(float(text)) if text else 0
 
 
-@st.cache_data(show_spinner=False)
-def load_overall(path: Path) -> tuple[dict[str, int], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    with path.open("r", encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.reader(handle))
+def parse_overall_rows(rows: list[list[str]]) -> tuple[dict[str, int], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    if len(rows) < 2:
+        raise ValueError("The overall Libsyn CSV does not include the expected totals section.")
 
     totals = {
-        "iab": _number(rows[1][1]),
-        "unique": _number(rows[1][2]),
+        "iab": _number(rows[1][1] if len(rows[1]) > 1 else 0),
+        "unique": _number(rows[1][2] if len(rows[1]) > 2 else 0),
     }
 
     sections: dict[str, list[dict[str, object]]] = {
@@ -81,6 +82,9 @@ def load_overall(path: Path) -> tuple[dict[str, int], pd.DataFrame, pd.DataFrame
     weekly = pd.DataFrame(sections["weekly"])
     monthly = pd.DataFrame(sections["monthly"])
 
+    if daily.empty or weekly.empty or monthly.empty:
+        raise ValueError("The overall Libsyn CSV must include daily, weekly, and monthly download sections.")
+
     daily["date"] = pd.to_datetime(daily["date"])
     weekly["date"] = pd.to_datetime(weekly["date"])
     monthly["date"] = pd.to_datetime(monthly["date"] + "-01")
@@ -93,9 +97,18 @@ def load_overall(path: Path) -> tuple[dict[str, int], pd.DataFrame, pd.DataFrame
     )
 
 
-@st.cache_data(show_spinner=False)
-def load_episodes(path: Path) -> pd.DataFrame:
-    episodes = pd.read_csv(path)
+def read_uploaded_rows(uploaded_file: Any) -> list[list[str]]:
+    text = uploaded_file.getvalue().decode("utf-8-sig")
+    return list(csv.reader(io.StringIO(text)))
+
+
+def normalize_episodes(episodes: pd.DataFrame) -> pd.DataFrame:
+    required_columns = {"Title", "Release", "IAB Downloads", "Unique Downloads"}
+    missing = required_columns - set(episodes.columns)
+    if missing:
+        missing_list = ", ".join(sorted(missing))
+        raise ValueError(f"The by-episode Libsyn CSV is missing: {missing_list}.")
+
     episodes = episodes.rename(
         columns={
             "Title": "title",
@@ -108,6 +121,19 @@ def load_episodes(path: Path) -> pd.DataFrame:
     episodes["iab"] = pd.to_numeric(episodes["iab"], errors="coerce").fillna(0).astype(int)
     episodes["unique"] = pd.to_numeric(episodes["unique"], errors="coerce").fillna(0).astype(int)
     return episodes.sort_values("release", ascending=False).reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_overall(path: Path) -> tuple[dict[str, int], pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.reader(handle))
+    return parse_overall_rows(rows)
+
+
+@st.cache_data(show_spinner=False)
+def load_episodes(path: Path) -> pd.DataFrame:
+    episodes = pd.read_csv(path)
+    return normalize_episodes(episodes)
 
 
 def format_num(value: int | float) -> str:
@@ -212,16 +238,49 @@ def monthly_chart(data: pd.DataFrame, metric_key: str, metric_name: str) -> alt.
     )
 
 
+st.caption("Libsyn export")
+st.title("Advanced Manufacturing Now")
+
+with st.expander("Update the dashboard data", expanded=False):
+    st.write(
+        "Drag in updated Libsyn CSV exports here. If no files are uploaded, the dashboard uses the saved data."
+    )
+    upload_a, upload_b = st.columns(2)
+    with upload_a:
+        overall_upload = st.file_uploader(
+            "Overall stats CSV",
+            type="csv",
+            help="Use the Libsyn export with Total, Daily Downloads, Weekly Downloads, and Monthly Downloads sections.",
+        )
+    with upload_b:
+        episodes_upload = st.file_uploader(
+            "By-episode CSV",
+            type="csv",
+            help="Use the Libsyn export with Title, Release, IAB Downloads, and Unique Downloads columns.",
+        )
+
 try:
-    totals, daily_df, weekly_df, monthly_df = load_overall(OVERALL_CSV)
-    episodes_df = load_episodes(EPISODE_CSV)
+    if overall_upload is not None:
+        totals, daily_df, weekly_df, monthly_df = parse_overall_rows(read_uploaded_rows(overall_upload))
+        overall_source = overall_upload.name
+    else:
+        totals, daily_df, weekly_df, monthly_df = load_overall(OVERALL_CSV)
+        overall_source = OVERALL_CSV.name
+
+    if episodes_upload is not None:
+        episodes_df = normalize_episodes(pd.read_csv(io.BytesIO(episodes_upload.getvalue())))
+        episodes_source = episodes_upload.name
+    else:
+        episodes_df = load_episodes(EPISODE_CSV)
+        episodes_source = EPISODE_CSV.name
 except FileNotFoundError as exc:
     st.error(f"Could not find the Libsyn export data: {exc}")
     st.stop()
+except (ValueError, KeyError, pd.errors.ParserError) as exc:
+    st.error(f"One of the uploaded files does not match the expected Libsyn CSV format: {exc}")
+    st.stop()
 
-
-st.caption("Libsyn export")
-st.title("Advanced Manufacturing Now")
+st.caption(f"Using overall data from `{overall_source}` and episode data from `{episodes_source}`.")
 
 control_a, control_b, control_c = st.columns([1, 1, 2])
 with control_a:
